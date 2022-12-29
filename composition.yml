@@ -1,0 +1,134 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  # name: appconfigs.stable.example.com
+  name: appconfig
+  labels:
+    # crossplane.io/xrd: xappconfigs.stable.example.com
+    provider: azure
+    # guide: quickstart
+# ...
+spec:
+  compositeTypeRef:
+    apiVersion: stable.example.com/v2
+    kind: XAppConfig
+  resources:
+# ...
+  - name: deployment
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              namespace: default
+            spec:
+              replicas: 1
+              template:
+                spec:
+                  containers:
+                  - name: frontend
+                    # imageName: nginx:1.14.2
+                    ports:
+                    - containerPort: 80
+                    livenessProbe:
+                      httpGet:
+                        path: /
+                        port: 80
+                    readinessProbe:
+                      httpGet:
+                        path: /
+                        port: 80
+                    resources:
+                      limits:
+                        cpu: 250m
+                        memory: 256Mi
+                      requests:
+                        cpu: 125m
+                        memory: 128Mi
+                  # tolerations:
+                  # - key: "node.kubernetes.io/network-unavailable"
+                  #   operator: "Exists"
+                    effect: "NoSchedule"
+        providerConfigRef:
+          name: default
+    patches:
+    - fromFieldPath: spec.id
+      toFieldPath: metadata.name
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.name
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.labels.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.selector.matchLabels.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.template.metadata.labels.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].name
+    - fromFieldPath: spec.parameters.imageName
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].image
+      # transforms:
+      #   - type: string
+      #     string:
+      #       fmt: "%s-deployment"
+    readinessChecks:
+      - type: None
+# ...
+  - name: service
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: v1
+            kind: Service
+            spec:
+              type: ClusterIP
+              ports:
+              - port: 80
+                targetPort: 80
+                protocol: TCP
+                name: http
+        providerConfigRef:
+          name: default 
+    patches:
+    - fromFieldPath: spec.id
+      toFieldPath: metadata.name
+      transforms:
+        - type: string
+          string:
+            fmt: "%s-service"
+    readinessChecks:
+      - type: None
+# ...
+  - name: hpa
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: autoscaling/v1
+            kind: HorizontalPodAutoscaler
+            spec:
+              minReplicas: 1
+              maxReplicas: 2
+              scaleTargetRef:
+                apiVersion: apps/v1
+                kind: Deployment
+              targetCPUUtilizationPercentage: 80
+        providerConfigRef:
+          name: default
+    patches:
+    - fromFieldPath: spec.parameters.replicasCount
+      toFieldPath: spec.forProvider.manifest.spec.minReplicas
+      # transforms:
+      #   - type: string
+      #     string:
+      #       fmt: "%s-ingress"
+    readinessChecks:
+      - type: None

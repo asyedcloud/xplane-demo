@@ -1,0 +1,11 @@
+apiVersion: stable.example.com/v2
+kind: AppConfigClaim
+metadata:
+  name: demo-appconfig
+  namespace: default
+spec:
+  id: unique2 
+  parameters:
+    replicasCount: 2
+    # image: nginx/nginx-ingress
+    imageName: nginx:latest

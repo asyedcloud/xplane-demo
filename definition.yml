@@ -1,0 +1,45 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xappconfigs.stable.example.com
+spec:
+  group: stable.example.com
+  names:
+    plural: xappconfigs
+    singular: xappconfig
+    kind: XAppConfig
+    shortNames:
+    - xac
+  claimNames:
+    kind: AppConfigClaim
+    plural: appconfigclaims
+  versions:
+  - name: v2
+    served: true
+    # storage: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              id:
+                type: string
+              parameters:
+                type: object
+                properties:
+                  # cronSpec:
+                  #   type: string
+                  imageName:
+                    type: string
+                  replicasCount:
+                    type: integer
+                required:
+                  - imageName
+                  - replicasCount       
+            required:
+              - id
+              - parameters
+  # scope: Namespaced
